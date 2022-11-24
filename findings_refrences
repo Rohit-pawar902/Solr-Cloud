@@ -1,0 +1,223 @@
+sudo bin/solr start -cloud -p 8983 -s "example/cloud/node1/solr" -force
+sudo bin/solr -e cloud -force
+
+Rohit Pawar, Nov 1, 2:57 PM
+bin/solr healthcheck -c gettingstarted   Health-Check
+
+Rohit Pawar, Nov 1, 3:09 PM
+bin/solr stop -all
+
+Starting with -noprompt
+bin/solr -e cloud -noprompt
+Restarting Nodes
+You can restart your SolrCloud nodes using the bin/solr script. For instance, to restart node1 running on port 8983 (with an embedded ZooKeeper server), you would do:
+
+----------------------------------------------------------------------------------------------
+bin/solr restart -c -p 8983 -s example/cloud/node1/solr
+bin/solr restart -c -p 7574 -z localhost:9983 -s example/cloud/node2/solr
+
+Notice that you need to specify the ZooKeeper address (-z localhost:9983) when starting node2 so that it can join the cluster with node1.
+
+Zokeeper is needed for joining the 2 or more nodes
+-----------------------------------------------------------
+Adding a node to a cluster
+
+mkdir -p example/cloud/node3/solr
+cp server/solr/solr.xml example/cloud/node3/solr
+bin/solr start -cloud -s example/cloud/node3/solr -p 8987 -z localhost:9983
+
+
+---------------------------------------------------------------------------------
+We can make as many cluster and up the node and for connecting node theire is a zookeeper for maintaining and connecting point of cluster
+
+Rohit Pawar, Nov 1, 3:24 PM
+indexing kaisa hogi and clusering and sharding
+
+Rohit Pawar, Nov 1, 4:41 PM
+https://docs.alfresco.com/insight-engine/latest/config/sharding/#:~:text=Solr%20sharding%20involves%20splitting%20a,unique%20slice%20of%20the%20index.
+
+Rohit Pawar, Nov 2, 6:37 PM
+## ofbiz sa we are creating index so how it would create in solr.
+
+Rohit Pawar, Nov 2, 6:43 PM
+http://localhost:7535/solr/admin/collections?action=CREATE&name=nov2&numShards=2
+{
+  "responseHeader":{
+    "status":0,
+    "QTime":2896},
+  "success":{
+    "127.0.1.1:7535_solr":{
+      "responseHeader":{
+        "status":0,
+        "QTime":1500},
+      "core":"nov2_shard2_replica_n2"},
+    "127.0.1.1:7574_solr":{
+      "responseHeader":{
+        "status":0,
+        "QTime":1544},
+      "core":"nov2_shard1_replica_n1"}},
+  "warning":"Using _default configset. Data driven schema functionality is enabled by default, which is NOT RECOMMENDED for production use. To turn it off: curl http://{host:port}/solr/nov2/config -d '{\"set-user-property\": {\"update.autoCreateFields\":\"false\"}}'"}
+
+Rohit Pawar, Nov 3, 12:20 PM
+Collections are made up of one or more shards. Shards have one or more replicas. Each replica is a core. A single collection represents a single logical index.
+https://cwiki.apache.org/confluence/display/solr/SolrTerminology
+
+Rohit Pawar, Nov 3, 12:32 PM
+A single Replica for each Shard that takes charge of coordinating index updates (document additions or deletions) to other replicas in the same shard. This is a transient responsibility assigned to a node via an election, if the current Shard Leader goes down, a new node will automatically be elected to take its place. See also SolrCloud.
+
+Rohit Pawar, Nov 3, 12:34 PM
+Optimistic concurrency
+Also known as "optimistic locking", this is an approach that allows for updates to documents currently in the index while retaining locking or version control.
+Overseer
+A single node in SolrCloud that is responsible for processing and coordinating actions involving the entire cluster. It keeps track of the state of existing nodes, collections, shards, and replicas, and assigns new replicas to nodes. This is a transient responsibility assigned to a node via an election, if the current Overseer goes down, a new node will be automatically elected to take its place. See also SolrCloud.
+Shard
+In SolrCloud, a logical partition of a single Collection. Every shard consists of at least one physical Replica, but there may be multiple Replicas distributed across multiple Nodes for fault tolerance. See also SolrCloud.
+SolrCloud
+Umbrella term for a suite of functionality in Solr which allows managing a Cluster of Solr Nodes for scalability, fault tolerance, and high availability.
+
+Rohit Pawar, Nov 3, 12:38 PM
+Transaction log
+An append-only log of write operations maintained by each Replica. This log is required with SolrCloud implementations and is created and managed automatically by Solr.
+ZooKeeper
+Also known as Apache ZooKeeper. The system used by SolrCloud to keep track of configuration files and node names for a cluster. A ZooKeeper cluster is used as the central configuration store for the cluster, a coordinator for operations requiring distributed synchronization, and the system of record for cluster topology. See also SolrCloud.
+
+Rohit Pawar, Nov 3, 1:39 PM
+A collection may only be colocated with exactly one withCollection. However, arbitrarily many collections may be linked to the same withCollection.
+
+Rohit Pawar, Nov 3, 3:33 PM
+scenrio - : if node's is stooped for restarting mention the zookeeper port 
+bin/solr restart -c -p 7574 localhost:9983  -s example/cloud/node1/solr -force
+otherwise it would restart on other zk port so its cluster would be different and gives error in already created collection.
+
+Rohit Pawar, Nov 3, 3:37 PM
+bin/solr restart -c -p 7574 -z localhost:8535  -s example/cloud/node2/solr -force
+
+Rohit Pawar, Nov 3, 4:28 PM
+Replica in solr-cloud is like cores
+```Replica: One copy of a shard. Each replica exists within Solr as a core. A collection named "test" created with numShards=1 and replicationFactor set to two will have exactly two replicas, so there will be two cores, each on a different machine (or Solr instance).```
+
+Rohit Pawar, Nov 3, 4:32 PM
+https://www.searchstax.com/docs/hc/solr-collection-core-shard-replica/
+
+Greatly quoted concepts
+
+Rohit Pawar, Nov 3, 5:52 PM
+1st Poc done - : on distributed i have created a node and connect it with zoo-kepper it will be successfully created 
+
+mkdir -p example/cloud/node3/solr
+cp server/solr/solr.xml example/cloud/node3/solr
+
+bin/solr start -cloud -s example/cloud/node3/solr -p 8988 -z 172.20.20.110:8535
+
+Rohit Pawar, Nov 3, 7:14 PM
+https://solr.apache.org/guide/6_6/setting-up-an-external-zookeeper-ensemble.html#SettingUpanExternalZooKeeperEnsemble-PointSolrattheinstance
+
+Rohit Pawar, Nov 3, 7:21 PM
+http://localhost:7574/solr/nov2/admin/ping?distrib=true&wt=xml
+
+Rohit Pawar, Nov 3, 7:30 PM
+http://localhost:7574/solr/admin/collections?action=CLUSTERSTATUS
+
+Collection API
+https://solr.apache.org/guide/6_6/collections-api.html#CollectionsAPI-addreplica
+
+AutoScalling API
+
+CoreAdminAPI
+https://solr.apache.org/guide/6_6/coreadmin-api.html#coreadmin-api
+http://localhost:7574/solr/admin/cores?action=STATUS
+http://localhost:7574/solr/admin/cores?action=STATUS&core=jugereplica_shard1_replica_n103
+
+ConfigApi 
+https://solr.apache.org/guide/6_6/config-api.html#config-api
+
+checkcorestatus
+http://localhost:7574/solr/nov2/admin/ping?distrib=true&wt=xml
+
+Rohit Pawar, Nov 4, 3:16 PM
+ZooKeeper also handles load balancing and failover. Incoming requests, either to index documents or for user queries, can be sent to any node of the cluster and ZooKeeper will route the request to an appropriate replica of each shard.
+https://solr.apache.org/guide/solr/latest/deployment-guide/cluster-types.html#solrcloud-mode
+
+Rohit Pawar, Nov 4, 6:20 PM
+  What is the sense to create replica in same node 
+i think they might contain diffrent cores
+
+Rohit Pawar, Nov 6, 7:52 PM
+http://localhost:7535/solr/nov2/schema/fields
+
+Rohit Pawar, Nov 6, 8:09 PM
+http://localhost:7535/solr/admin/cores?action=STATUS&core=nov2_shard1_replica_n5
+
+Rohit Pawar, Nov 6, 8:18 PM
+http://localhost:7535/v2/c/nov2/schema/fields  v2 api mixture of many old api one in all types
+
+Rohit Pawar, Nov 7, 12:32 PM
+Stores core related data on that example/cloud/node1/solr/gettingstarted_shard1_replica_n1
+
+Rohit Pawar, Nov 7, 1:42 PM
+# By default the start script uses "localhost"; override the hostname here
+# for production SolrCloud environments to control the hostname exposed to cluster state
+#SOLR_HOST="192.168.1.1"
+
+Rohit Pawar, Nov 7, 2:06 PM
+# By default the start script uses "localhost"; override the hostname here
+# for production SolrCloud environments to control the hostname exposed to cluster state
+SOLR_HOST="172.20.20.110"
+manipulate this for right acessing of host and core distribution
+
+Rohit Pawar, Nov 7, 2:47 PM
+solar.in.sh changed
+
+Rohit Pawar, Nov 7, 3:30 PM
+try (EntityListIterator eli = EntityQuery.use(delegator).from("OrderItem").where(conditionList).queryIterator();
+HttpSolrClient client = (HttpSolrClient) SearchUtil.getSolrClient(delegator, "enterpriseSearch")) {
+    GenericValue orderItem;
+    while ((orderItem = eli.next()) != null) {
+        SolrInputDocument doc = createDocForOrder(delegator, dispatcher, userLogin, orderItem, timeZone, locale);
+        client.add(doc);
+    }
+} catch (GenericEntityException | IOException | SolrException | SolrServerException e) {
+    Debug.logError("[Search] Error in createOrderIndex "+e.getMessage(), MODULE);
+}
+
+Rohit Pawar, Nov 7, 5:45 PM
+http://172.20.20.110:8960/solr/admin/collections?action=CREATE&name=enterprise4&numShards=2&replicationFactor=2&maxShardsPerNode=2
+
+Rohit Pawar, Nov 7, 5:53 PM
+{
+  "responseHeader":{
+    "status":0,
+    "QTime":5517},
+  "success":{
+    "172.20.20.110:8960_solr":{
+      "responseHeader":{
+        "status":0,
+        "QTime":3533},
+      "core":"enterprise4_shard2_replica_n4"},
+    "172.20.20.110:8960_solr":{
+      "responseHeader":{
+        "status":0,
+        "QTime":3576},
+      "core":"enterprise4_shard1_replica_n1"},
+    "172.20.20.195:8953_solr":{
+      "responseHeader":{
+        "status":0,
+        "QTime":4107},
+      "core":"enterprise4_shard1_replica_n2"},
+    "172.20.20.195:8953_solr":{
+      "responseHeader":{
+        "status":0,
+        "QTime":4116},
+      "core":"enterprise4_shard2_replica_n6"}},
+  "warning":"Using _default configset. Data driven schema functionality is enabled by default, which is NOT RECOMMENDED for production use. To turn it off: curl http://{host:port}/solr/enterprise4/config -d '{\"set-user-property\": {\"update.autoCreateFields\":\"false\"}}'"}
+
+Rohit Pawar, Nov 7, 5:57 PM
+replicationFactor=2&maxShardsPerNode=2 it must be equal  or maxShardsPerNode must be grater then live node and
+
+Rohit Pawar, Nov 7, 11:35 PM
+https://www.youtube.com/channel/UCG9gUlgtKiHr7ENxSewVdNQ/videos
+https://www.youtube.com/watch?v=cuoFgGfXFGU
+
+Rohit Pawar, Nov 7, 11:44 PM
+https://www.tabnine.com/code/java/methods/org.apache.solr.client.solrj.request.CollectionAdminRequest/createCollection
+good implementations
