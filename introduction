@@ -1,0 +1,105 @@
+For Load-Balancing  and Efficient query on distributed-data . we are going towards the path way of Solr-Cloud . 
+
+Solr-Cloud architecture based on : Collections , Shards(logical) , replicas(cores), Zookeeper(Manager of cluster ,it did leader selection , load-balancing etc ). 
+
+User limited the search via the shards or route_ parameters. The more replicas there are of every shard, the more likely that the Solr cluster will be able to handle search results in the event of node failures.
+
+Document Routing -➝ We can give route.name to shards when we are making collection and then at document sending time forward prefix!DocID  to send the document to particular and then at query time we can mention route_id=prefix q=solr&_route_=IBM!) to direct queries to specific shards
+It improve query performance because it overcomes network latency when querying all the shards.
+Another use case could be if the customer "IBM" has a lot of documents and you want to spread it across multiple shards. The syntax for such a use case would be : "shard_key/num!document_id" where the /num is the number of bits from the shard key to use in the composite hash.
+If you created the collection and defined the "implicit" router at the time of creation, you can additionally define a router.field parameter to use a field from each document to identify a shard where the document belongs. If the field specified is missing in the document, however, the document will be rejected. You could also use the _route_ parameter to name a specific shard.
+
+route.name : It can be implicit or composite , In implicit we can specify specific shard , In composite must to give route prefix in shard , without it we would not get document in core.
+
+Shard-Splitting -: we can split the initially created shards into 2 shards again as business requirement  Collection API’s SPLITSHARD command.
+
+Zoo-Keeper also handles load balancing and fail-over. Incoming requests, either to index documents or for user queries, can be sent to any node of the cluster and ZooKeeper will route the request to an appropriate replica of each shard.
+ 
+
+Integration Detail
+Pre-configured -Things to do
+We have to make cluster.
+  solr.in.sh changed in solr for manipulate this for right accessing of host and core distribution 
+# By default the start script uses "localhost"; override the hostname here# for production SolrCloud environments to control the hostname exposed to cluster state SOLR_HOST="172.20.20.110"
+  Specify the IP Here .
+And join the multiple Solr-server with Manager Zk (Zookepper).
+Files-Involving For Integration
+-SolarSchemaService
+-SearchUtil
+-search.properties
+-solrSchema.xml
+-serachService - doc input 
+
+Tasks :- 1)Without using route for shard split (Just load-balancing not doc split) 
+	          Just create the 1 shard and multiple replica on different hosts. 
+	        2).with multiple shard because it can split the traffic + doc to another core and querying would be faster.( load balance + split doc)
+	        3).now with route you can try for filtering or specific placing of documents to specific shard.
+	            but on query we have to specify the route here
+	        4) find any why we would do data categorisation according to shards by route-prefix or sending doc to particular shard , but it avoid the specifying of shard in query.
+
+  Thinking
+1)shards data can partition according to user ,country etc any distinguishing factor
+   and we can map shards name with country or other things and pass in query.
+   More core/replica light-weight it will make faster query
+2)shard use a "hash" on the unique-Key of each document to determine its Shard.
+3)route prefix multi-filter also possible. But still we have to give the      route      in the query
+
+Read For Better understanding of searching.
+https://solr.apache.org/guide/7_5/solrcloud-query-routing-and-read-tolerance.html
+https://solr.pl/en/2019/01/14/solrcloud-and-query-execution-control/
+
+
+
+we are Just Playing Around Multiple cores In solr-cloud And Zookeeper thing which automates thing much smoothly
+ In same shard multiple core but same data ,it helps in load balancing , like if one core is  processing high requests then zk will auto-redirect to other core on other node/host.
+
+In multiple shard data splits we can categorise data ,or we can just randomly store data in shards , and query in all cores , but for efficiency in query we have to use    route    to query on particular shard . And also we can do it without route , we can pick one shard ,but in route we give shard  a prefix , through which sent document also know where to go for storage in shards .
+
+
+Distributed-Request :
+when we Query on the collection request goes to an random raplica which acts aa an aggregator and calls internal requests to randomly chosen replicas of every shard in the collection.
+
+Limiting which Shard has to Query
+https://solr.apache.org/guide/6_6/distributed-requests.html#DistributedRequests-LimitingWhichShardsareQueried
+Querying all shards for a collection should look familiar :
+http://localhost:8983/solr/gettingstarted/select?q=*:*
+ on the other hand, you wanted to search just one shard, you can specify that shard by its logical ID
+http://localhost:8983/solr/gettingstarted/select?q=*:*&shards=shard1
+
+Or you can specify a list of replicas to choose from for a single shard (for load balancing purposes) by using the pipe symbol (|):
+http://localhost:8983/solr/gettingstarted/select?q=*:*&shards=localhost:7574/solr/gettingstarted|localhost:7500/solr/gettingstarted
+
+http://localhost:8983/solr/gettingstarted/select?q=*:*&shards=shard1,localhost:7574/solr/gettingstarted|localhost:7500/solr/gettingstarted
+
+If an update fails because cores are reloading schemas and some have finished but others have not, the leader tells the nodes that the update failed and starts the recovery procedure.
+ 
+
+
+IN Future IN inspect it can help
+http://localhost:8960/solr/admin/collections?action=CLUSTERSTATUS
+IN this we can check route name given for shards and all information about cluster
+
+
+
+http://localhost:7574/solr/admin/collections?action=CLUSTERSTATUS
+SchemaAPI
+Collection API
+https://solr.apache.org/guide/6_6/collections-api.html#CollectionsAPI-addreplica
+AutoScalling API
+CoreAdminAPI
+https://solr.apache.org/guide/6_6/coreadmin-api.html#coreadmin-api
+
+http://localhost:7574/solr/admin/cores?action=STATUS
+http://localhost:7574/solr/admin/cores?action=STATUS&core=jugereplica_shard1_replica_n103
+
+ConfigAPI
+https://solr.apache.org/guide/6_6/config-api.html#config-api
+
+checkcorestatus
+http://localhost:7574/solr/nov2/admin/ping?distrib=true&wt=xml
+
+solarj 
+ pluginLibsCompile 'org.apache.solr:solr-solrj:7.5.0'
+
+
+https://www.searchstax.com/blog/top-10-best-practices-when-taking-solr-to-production/
